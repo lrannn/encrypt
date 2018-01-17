@@ -25,24 +25,19 @@ package com.gcssloop.encrypt.symmetric;
 import android.annotation.SuppressLint;
 import android.support.annotation.IntDef;
 
-import com.gcssloop.encrypt.base.CryptoProvider;
-
 import java.io.UnsupportedEncodingException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.SecureRandom;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 import static com.gcssloop.encrypt.base.BaseUtils.parseByte2HexStr;
 import static com.gcssloop.encrypt.base.BaseUtils.parseHexStr2Byte;
+
 
 /**
  * AES 工具类
@@ -51,7 +46,8 @@ public class AESUtil {
     private final static String SHA1PRNG = "SHA1PRNG";
 
     @IntDef({Cipher.ENCRYPT_MODE, Cipher.DECRYPT_MODE})
-    @interface AESType {}
+    @interface AESType {
+    }
 
     /**
      * Aes加密/解密
@@ -63,36 +59,25 @@ public class AESUtil {
      */
     public static String aes(String content, String password, @AESType int type) {
         try {
-            KeyGenerator generator = KeyGenerator.getInstance("AES");
-
-            SecureRandom secureRandom;
-            if (android.os.Build.VERSION.SDK_INT >= 24) {
-                secureRandom = SecureRandom.getInstance(SHA1PRNG, new CryptoProvider());
-            } else if (android.os.Build.VERSION.SDK_INT >= 17) {
-                secureRandom = SecureRandom.getInstance(SHA1PRNG, "Crypto");
-            } else {
-                secureRandom = SecureRandom.getInstance(SHA1PRNG);
-            }
-            secureRandom.setSeed(password.getBytes());
-            generator.init(128, secureRandom);
-            SecretKey secretKey = generator.generateKey();
-            byte[] enCodeFormat = secretKey.getEncoded();
-            SecretKeySpec key = new SecretKeySpec(enCodeFormat, "AES");
-            @SuppressLint("GetInstance") Cipher cipher = Cipher.getInstance("AES");
+            SecretKeySpec key = new SecretKeySpec(password.getBytes(), "AES");
+            @SuppressLint("GetInstance") Cipher cipher = Cipher.getInstance("AES/ECB/PKCS7Padding");
             cipher.init(type, key);
 
             if (type == Cipher.ENCRYPT_MODE) {
-                byte[] byteContent = content.getBytes("utf-8");
+                byte[] byteContent = content.getBytes();
                 return parseByte2HexStr(cipher.doFinal(byteContent));
             } else {
                 byte[] byteContent = parseHexStr2Byte(content);
-                return new String(cipher.doFinal(byteContent));
+                byte[] doFinal = cipher.doFinal(byteContent);
+                return new String(doFinal, "UTF-8");
             }
         } catch (NoSuchAlgorithmException | BadPaddingException | IllegalBlockSizeException |
-                UnsupportedEncodingException | InvalidKeyException | NoSuchPaddingException |
-                NoSuchProviderException e) {
+                InvalidKeyException | NoSuchPaddingException e) {
+            e.printStackTrace();
+        } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
         return null;
     }
+
 }
